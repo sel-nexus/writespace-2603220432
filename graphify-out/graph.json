@@ -189,15 +189,6 @@
       "_origin": "ast"
     },
     {
-      "id": "frontend_e2e_content_spec_storage_setitem",
-      "label": ".setItem()",
-      "file_type": "code",
-      "source_file": "frontend/e2e/content.spec.js",
-      "source_location": "L184",
-      "_callable": true,
-      "_origin": "ast"
-    },
-    {
       "id": "frontend_e2e_fixtures",
       "label": "fixtures.js",
       "file_type": "code",
@@ -235,14 +226,30 @@
       "community": 7
     },
     {
-      "id": "frontend_e2e_identity_spec_storage_setitem",
-      "label": ".setItem()",
+      "id": "frontend_e2e_identity_spec_exhaustquota",
+      "label": "exhaustQuota()",
       "file_type": "code",
       "source_file": "frontend/e2e/identity.spec.js",
-      "source_location": "L102",
+      "source_location": "L113",
       "_callable": true,
-      "_origin": "ast",
-      "community": 11
+      "_origin": "ast"
+    },
+    {
+      "id": "frontend_e2e_preflight_spec",
+      "label": "preflight.spec.js",
+      "file_type": "code",
+      "source_file": "frontend/e2e/preflight.spec.js",
+      "source_location": "L1",
+      "_origin": "ast"
+    },
+    {
+      "id": "frontend_e2e_preflight_spec_capture",
+      "label": "capture()",
+      "file_type": "code",
+      "source_file": "frontend/e2e/preflight.spec.js",
+      "source_location": "L6",
+      "_callable": true,
+      "_origin": "ast"
     },
     {
       "id": "frontend_e2e_reading_spec",
@@ -283,15 +290,6 @@
       "file_type": "code",
       "source_file": "frontend/e2e/reading.spec.js",
       "source_location": "L30",
-      "_callable": true,
-      "_origin": "ast"
-    },
-    {
-      "id": "frontend_e2e_reading_spec_storage_removeitem",
-      "label": ".removeItem()",
-      "file_type": "code",
-      "source_file": "frontend/e2e/reading.spec.js",
-      "source_location": "L165",
       "_callable": true,
       "_origin": "ast"
     },
@@ -854,7 +852,7 @@
       "label": "ProtectedRoute()",
       "file_type": "code",
       "source_file": "frontend/src/components/ProtectedRoute.jsx",
-      "source_location": "L11",
+      "source_location": "L13",
       "_callable": true,
       "_origin": "ast"
     },
@@ -1120,7 +1118,7 @@
       "label": "benefits",
       "file_type": "code",
       "source_file": "frontend/src/pages/LandingPage.jsx",
-      "source_location": "L9",
+      "source_location": "L10",
       "_origin": "ast",
       "community": 3
     },
@@ -1129,17 +1127,7 @@
       "label": "latestPosts()",
       "file_type": "code",
       "source_file": "frontend/src/pages/LandingPage.jsx",
-      "source_location": "L19",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 3
-    },
-    {
-      "id": "frontend_src_pages_landingpage_formatdate",
-      "label": "formatDate()",
-      "file_type": "code",
-      "source_file": "frontend/src/pages/LandingPage.jsx",
-      "source_location": "L31",
+      "source_location": "L20",
       "_callable": true,
       "_origin": "ast",
       "community": 3
@@ -1149,7 +1137,7 @@
       "label": "LandingPage()",
       "file_type": "code",
       "source_file": "frontend/src/pages/LandingPage.jsx",
-      "source_location": "L40",
+      "source_location": "L32",
       "_callable": true,
       "_origin": "ast",
       "community": 3
@@ -1262,7 +1250,7 @@
       "label": "protectedPaths",
       "file_type": "code",
       "source_file": "frontend/src/pages/Reading.test.jsx",
-      "source_location": "L53",
+      "source_location": "L135",
       "_origin": "ast"
     },
     {
@@ -2339,17 +2327,6 @@
       "_origin": "ast"
     },
     {
-      "source": "frontend_e2e_content_spec_seed",
-      "target": "frontend_e2e_content_spec_storage_setitem",
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/e2e/content.spec.js",
-      "source_location": "L20",
-      "weight": 1.0,
-      "_origin": "ast"
-    },
-    {
       "source": "frontend_e2e_fixtures",
       "target": "frontend_e2e_fixtures_test",
       "relation": "contains",
@@ -2388,6 +2365,48 @@
       "confidence": "EXTRACTED",
       "source_file": "frontend/e2e/identity.spec.js",
       "source_location": "L5",
+      "weight": 1.0,
+      "_origin": "ast"
+    },
+    {
+      "source": "frontend_e2e_identity_spec",
+      "target": "frontend_e2e_identity_spec_exhaustquota",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/e2e/identity.spec.js",
+      "source_location": "L113",
+      "weight": 1.0,
+      "_origin": "ast"
+    },
+    {
+      "source": "frontend_e2e_preflight_spec",
+      "target": "frontend_e2e_fixtures",
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/e2e/preflight.spec.js",
+      "source_location": "L2",
+      "weight": 1.0,
+      "_origin": "ast"
+    },
+    {
+      "source": "frontend_e2e_preflight_spec",
+      "target": "frontend_e2e_fixtures_test",
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/e2e/preflight.spec.js",
+      "source_location": "L2",
+      "weight": 1.0,
+      "_origin": "ast"
+    },
+    {
+      "source": "frontend_e2e_preflight_spec",
+      "target": "frontend_e2e_preflight_spec_capture",
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/e2e/preflight.spec.js",
+      "source_location": "L6",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -3358,7 +3377,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/ProtectedRoute.jsx",
-      "source_location": "L11",
+      "source_location": "L13",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -4224,11 +4243,33 @@
     },
     {
       "source": "frontend_src_pages_landingpage",
+      "target": "frontend_src_utils_presentation",
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/LandingPage.jsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "_origin": "ast"
+    },
+    {
+      "source": "frontend_src_pages_landingpage",
+      "target": "frontend_src_utils_presentation_formatdate",
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/pages/LandingPage.jsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "_origin": "ast"
+    },
+    {
+      "source": "frontend_src_pages_landingpage",
       "target": "frontend_src_pages_landingpage_benefits",
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/pages/LandingPage.jsx",
-      "source_location": "L9",
+      "source_location": "L10",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -4238,17 +4279,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/pages/LandingPage.jsx",
-      "source_location": "L19",
-      "weight": 1.0,
-      "_origin": "ast"
-    },
-    {
-      "source": "frontend_src_pages_landingpage",
-      "target": "frontend_src_pages_landingpage_formatdate",
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/pages/LandingPage.jsx",
-      "source_location": "L31",
+      "source_location": "L20",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -4258,7 +4289,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/pages/LandingPage.jsx",
-      "source_location": "L40",
+      "source_location": "L32",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -4269,18 +4300,7 @@
       "context": "argument",
       "confidence": "INFERRED",
       "source_file": "frontend/src/pages/LandingPage.jsx",
-      "source_location": "L41",
-      "weight": 1.0,
-      "_origin": "ast"
-    },
-    {
-      "source": "frontend_src_pages_landingpage_landingpage",
-      "target": "frontend_src_pages_landingpage_formatdate",
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "source_file": "frontend/src/pages/LandingPage.jsx",
-      "source_location": "L127",
+      "source_location": "L33",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -4677,7 +4697,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/pages/Reading.test.jsx",
-      "source_location": "L53",
+      "source_location": "L135",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -7200,7 +7220,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/pages/LandingPage.jsx",
-      "source_location": "L20",
+      "source_location": "L21",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -7391,7 +7411,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "frontend/src/App.jsx",
-      "source_location": "L39",
+      "source_location": "L51",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -7403,7 +7423,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "frontend/src/App.jsx",
-      "source_location": "L101",
+      "source_location": "L113",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -7475,7 +7495,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "frontend/src/components/ProtectedRoute.jsx",
-      "source_location": "L12",
+      "source_location": "L14",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -7608,6 +7628,18 @@
       "confidence_score": 1.0,
       "source_file": "frontend/src/pages/Home.jsx",
       "source_location": "L13",
+      "weight": 1.0,
+      "_origin": "ast"
+    },
+    {
+      "source": "frontend_src_pages_landingpage_landingpage",
+      "target": "frontend_src_utils_presentation_formatdate",
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "frontend/src/pages/LandingPage.jsx",
+      "source_location": "L119",
       "weight": 1.0,
       "_origin": "ast"
     },
@@ -7949,10 +7981,10 @@
     }
   ],
   "metadata": {
-    "built_at": "2026-10-13T04:11:51.584551+00:00",
+    "built_at": "2026-10-13T04:38:37.595252+00:00",
     "version": "graph_update-v1",
     "codebase_root": "/data/artifacts-v2/T0132PcJVCRTV008213102603220432/developer",
     "force": true,
-    "files_scanned": 47
+    "files_scanned": 48
   }
 }
