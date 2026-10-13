@@ -63,7 +63,7 @@ describe('direct URL role matrix', () => {
     signIn();
     savePosts([own, other]);
     open(path);
-    const destination = path === '/blog/own' ? '/blog/own' : '/blogs';
+    const destination = ['/admin', '/users'].includes(path) ? '/blogs' : path;
     await waitFor(() => expect(screen.getByLabelText('Current route')).toHaveTextContent(destination));
     expect(screen.getByRole('navigation', { name: 'Member navigation' })).toBeVisible();
     expect(screen.queryByRole('link', { name: 'Users', exact: true })).not.toBeInTheDocument();
@@ -72,7 +72,7 @@ describe('direct URL role matrix', () => {
     signIn('admin');
     savePosts([own]);
     open(path);
-    const destination = ['/admin', '/users'].includes(path) ? '/' : path === '/blog/own' ? path : '/blogs';
+    const destination = ['/admin', '/users'].includes(path) ? '/' : path;
     await waitFor(() => expect(screen.getByLabelText('Current route').textContent).toBe(destination));
     if (destination === '/') {
       expect(screen.getByRole('navigation', { name: 'Public navigation' })).toBeVisible();
@@ -185,7 +185,7 @@ describe('blog collection and reader', () => {
       open(`/blog/${id}`);
       expect(Boolean(screen.queryByRole('link', { name: 'Edit', exact: true }))).toBe(permitted);
       expect(screen.getByRole('link', { name: 'Back to All Posts' })).toHaveAttribute('href', '/blogs');
-      expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument();
+      expect(Boolean(screen.queryByRole('button', { name: 'Delete' }))).toBe(permitted);
     },
   );
   it('reads full content as plain text with whitespace preserved and navigates back', async () => {
@@ -219,16 +219,83 @@ describe('blog collection and reader', () => {
     expect(screen.getByText('Saved name')).toBeVisible();
     expect(within(screen.getByRole('article')).getByRole('img', { name: 'user avatar' })).toBeVisible();
   });
-  it('keeps write and edit navigation read-only until the content story', async () => {
+  it('opens real write and edit forms through member links without saving on navigation', async () => {
     signIn();
     savePosts([own]);
     open('/blog/own');
     await userEvent.click(screen.getByRole('link', { name: 'Edit', exact: true }));
-    expect(await screen.findByRole('heading', { name: 'All Blogs' })).toBeVisible();
+    expect(await screen.findByRole('heading', { name: 'Edit Blog' })).toBeVisible();
+    expect(screen.getByLabelText('Title')).toHaveValue(own.title);
     await userEvent.click(screen.getByRole('button', { name: 'Toggle navigation' }));
     await userEvent.click(screen.getByRole('link', { name: 'Write', exact: true }));
-    expect(screen.getByRole('heading', { name: 'All Blogs' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Write a Blog' })).toBeVisible();
+    expect(screen.getByLabelText('Title')).toHaveValue('');
     expect(getPosts()).toEqual([own]);
+  });
+});
+
+describe('confirmed reader deletion', () => {
+  it.each(['user', 'admin'])('cancels then confirms deletion for %s and refreshes persisted collection', async (role) => {
+    signIn(role);
+    savePosts([own, other]);
+    open('/blog/own');
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    await userEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    expect(confirm).toHaveBeenCalledWith('Delete “Own thoughts”? This cannot be undone.');
+    expect(getPosts()).toEqual([own, other]);
+    expect(screen.getByLabelText('Current route')).toHaveTextContent('/blog/own');
+    confirm.mockReturnValue(true);
+    await userEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    expect(await screen.findByRole('heading', { name: 'All Blogs' })).toBeVisible();
+    expect(getPosts()).toEqual([other]);
+    expect(screen.queryByRole('heading', { name: own.title })).not.toBeInTheDocument();
+  });
+  it('permits admin deletion of another author and handles an empty result', async () => {
+    signIn('admin');
+    savePosts([other]);
+    open('/blog/other');
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    await userEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    expect(await screen.findByRole('heading', { name: 'No blogs yet. Be the first to write one!' })).toBeVisible();
+    expect(getPosts()).toEqual([]);
+  });
+  it('reports failed deletion and allows retry without claiming persistence', async () => {
+    signIn();
+    savePosts([own]);
+    open('/blog/own');
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const denial = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('Denied'); });
+    await userEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    expect(screen.getByRole('alert')).toHaveTextContent('Unable to save data in this browser. Please try again.');
+    expect(screen.getByLabelText('Current route')).toHaveTextContent('/blog/own');
+    expect(getPosts()).toEqual([own]);
+    denial.mockRestore();
+    await userEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    expect(await screen.findByRole('heading', { name: 'All Blogs' })).toBeVisible();
+    expect(getPosts()).toEqual([]);
+  });
+  it.each(['logout', 'ownership', 'missing', 'deleted account', 'changed session'])('rejects stale %s after confirm and stays with feedback', async (change) => {
+    signIn();
+    savePosts([own]);
+    open('/blog/own');
+    vi.spyOn(window, 'confirm').mockImplementation(() => {
+      if (change === 'logout') localStorage.removeItem('writespace_session');
+      if (change === 'ownership') savePosts([{ ...own, authorId: 'admin' }]);
+      if (change === 'missing') savePosts([]);
+      if (change === 'deleted account') saveUsers([]);
+      if (change === 'changed session') {
+        localStorage.setItem('writespace_session', JSON.stringify({
+          userId: 'editor', username: 'editor', displayName: 'Editor', role: 'user',
+        }));
+      }
+      return true;
+    });
+    await userEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      change === 'missing' ? 'Post not found' : change === 'ownership' ? /permission/ : /log in again/,
+    );
+    expect(screen.getByLabelText('Current route')).toHaveTextContent('/blog/own');
+    expect(getPosts()).toEqual(change === 'missing' ? [] : change === 'ownership' ? [{ ...own, authorId: 'admin' }] : [own]);
   });
 });
 

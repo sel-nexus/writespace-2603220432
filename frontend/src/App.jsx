@@ -1,4 +1,4 @@
-/** Route public, identity and reading surfaces; revalidate local data without Context. */
+/** Route public, identity, reading and content surfaces; revalidate local data without Context. */
 import { useEffect, useState } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import LandingPage from './pages/LandingPage';
@@ -6,6 +6,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import Home from './pages/Home';
 import ReadBlog from './pages/ReadBlog';
+import WriteBlog from './pages/WriteBlog';
 import { Navbar } from './components/Navbar';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { getSession } from './utils/auth';
@@ -40,6 +41,11 @@ export default function App() {
     setSession(getSession());
   }
 
+  /** Refresh visible posts only after the shared service confirms a successful write. */
+  function postsChanged() {
+    setPosts(getPosts());
+  }
+
   /** Wrap a reading page with canonical guards and member navigation. */
   function member(page) {
     return (
@@ -71,17 +77,17 @@ export default function App() {
       />
       <Route
         path="/blog/:id"
-        element={member(current ? <ReadBlog posts={posts} users={users} session={current} /> : null)}
+        element={member(current ? (
+          <ReadBlog posts={posts} users={users} session={current} onPostsChanged={postsChanged} />
+        ) : null)}
       />
       {['/write', '/edit/:id'].map((path) => (
         <Route
           key={path}
           path={path}
-          element={
-            <ProtectedRoute>
-              <Navigate to="/blogs" replace />
-            </ProtectedRoute>
-          }
+          element={member(current ? (
+            <WriteBlog key={`editor:${location.pathname}`} session={current} onPostsChanged={postsChanged} />
+          ) : null)}
         />
       ))}
       {['/admin', '/users'].map((path) => (
