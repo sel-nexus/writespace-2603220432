@@ -49,19 +49,23 @@ for (const path of ['/blogs', '/blog/5', '/write', '/edit/5', '/admin', '/users'
 
 for (const role of ['user', 'admin']) {
   for (const path of ['/blogs', '/blog/5', '/write', '/edit/5', '/admin', '/users', '/login', '/register']) {
-    test(`${role} direct entry ${path} observes role guards and reading-only fallbacks`, async ({ page }, testInfo) => {
+    test(`${role} direct entry ${path} observes the finished route matrix`, async ({ page }, testInfo) => {
       await seed(page, role);
       await page.goto(path);
-      const destination = role === 'admin' && ['/admin', '/users', '/login', '/register'].includes(path)
-        ? '/' : path === '/blog/5' ? '/blog/5' : '/blogs';
-      await expect(page).toHaveURL(new RegExp(`${destination === '/' ? '\\/' : destination}$`));
-      if (destination === '/') {
-        await expect(page.getByRole('navigation', { name: 'Public navigation' })).toBeVisible();
-      } else {
-        const nav = await navigation(page, testInfo);
-        await expect(nav.getByRole('link', { name: 'Write', exact: true })).toBeVisible();
-        await expect(nav.getByRole('link', { name: 'Users', exact: true })).toHaveCount(role === 'admin' ? 1 : 0);
-      }
+      const authPage = ['/login', '/register'].includes(path);
+      const adminPage = ['/admin', '/users'].includes(path);
+      const destination = authPage ? (role === 'admin' ? '/admin' : '/blogs')
+        : adminPage && role === 'user' ? '/blogs' : path;
+      await expect(page).toHaveURL(new RegExp(`${destination}$`));
+      const headings = {
+        '/admin': 'Admin Dashboard', '/users': 'Manage Users', '/write': 'Write a Blog',
+        '/edit/5': 'Edit Blog', '/blog/5': 'Local entry 5', '/blogs': 'All Blogs',
+      };
+      await expect(page.getByRole('heading', { level: 1, name: headings[destination], exact: true })).toBeVisible();
+      if (destination === '/edit/5') await expect(page.getByLabel('Title')).toHaveValue('Local entry 5');
+      const nav = await navigation(page, testInfo);
+      await expect(nav.getByRole('link', { name: 'Write', exact: true })).toBeVisible();
+      await expect(nav.getByRole('link', { name: 'Users', exact: true })).toHaveCount(role === 'admin' ? 1 : 0);
       expect(await page.evaluate(() => JSON.parse(localStorage.getItem('writespace_posts')))).toEqual(posts);
     });
   }
@@ -111,21 +115,31 @@ test('writer reads persisted plain text, toggles mobile navigation and logs out 
   await expect(page.getByRole('article')).toHaveCount(5);
 });
 
-test('admin reads every post and returns safely from future Users and Write links', async ({ page }, testInfo) => {
+test('admin reads, edits then cancels, manages users and opens a fresh writing form', async ({ page }, testInfo) => {
   await seed(page, 'admin');
   await page.goto('/blogs');
   await expect(page.getByRole('link', { name: /^Edit / })).toHaveCount(5);
   await page.getByRole('article').first().getByRole('link', { name: /^Local entry 5/ }).click();
-  await expect(page.getByRole('link', { name: 'Edit', exact: true })).toBeVisible();
   await page.getByRole('link', { name: 'Edit', exact: true }).click();
-  await expect(page).toHaveURL(/\/blogs$/);
+  await expect(page).toHaveURL(/\/edit\/5$/);
+  await expect(page.getByLabel('Title')).toHaveValue('Local entry 5');
+  await expect(page.getByLabel('Content')).toHaveValue(posts.find((post) => post.id === '5').content);
+  await page.getByLabel('Title').fill('Unsaved title');
+  await page.getByRole('button', { name: 'Cancel' }).click();
+  await expect(page).toHaveURL(/\/blog\/5$/);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('writespace_posts')))).toEqual(posts);
   let nav = await navigation(page, testInfo);
   await nav.getByRole('link', { name: 'Users', exact: true }).click();
-  await expect(page.getByRole('navigation', { name: 'Public navigation' })).toBeVisible();
-  await page.getByRole('link', { name: 'Start Reading', exact: true }).click();
+  await expect(page).toHaveURL(/\/users$/);
+  await expect(page.getByRole('heading', { name: 'Create User' })).toBeVisible();
   nav = await navigation(page, testInfo);
   await nav.getByRole('link', { name: 'Write', exact: true }).click();
-  await expect(page).toHaveURL(/\/blogs$/);
+  await expect(page).toHaveURL(/\/write$/);
+  await expect(page.getByLabel('Title')).toHaveValue('');
+  await expect(page.getByLabel('Content')).toHaveValue('');
+  await page.getByRole('button', { name: 'Cancel' }).click();
+  await expect(page).toHaveURL(/\/users$/);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('writespace_users')))).toEqual(users);
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('writespace_posts')))).toEqual(posts);
 });
 
@@ -136,6 +150,10 @@ test('missing reader offers back navigation to an empty collection', async ({ pa
   await page.getByRole('link', { name: 'Back to All Posts' }).click();
   await expect(page.getByText('No blogs yet. Be the first to write one!')).toBeVisible();
   await page.getByRole('link', { name: 'Write a Blog' }).click();
+  await expect(page).toHaveURL(/\/write$/);
+  await expect(page.getByRole('heading', { name: 'Write a Blog' })).toBeVisible();
+  await expect(page.getByLabel('Title')).toHaveValue('');
+  await page.getByRole('button', { name: 'Cancel' }).click();
   await expect(page).toHaveURL(/\/blogs$/);
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('writespace_posts')))).toEqual([]);
 });

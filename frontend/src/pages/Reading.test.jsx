@@ -68,18 +68,15 @@ describe('direct URL role matrix', () => {
     expect(screen.getByRole('navigation', { name: 'Member navigation' })).toBeVisible();
     expect(screen.queryByRole('link', { name: 'Users', exact: true })).not.toBeInTheDocument();
   });
-  it.each(protectedPaths)('routes an admin entering %s using safe future-story fallbacks', async (path) => {
+  it.each(protectedPaths)('routes an admin entering %s to its finished member page', async (path) => {
     signIn('admin');
     savePosts([own]);
     open(path);
-    const destination = ['/admin', '/users'].includes(path) ? '/' : path;
-    await waitFor(() => expect(screen.getByLabelText('Current route').textContent).toBe(destination));
-    if (destination === '/') {
-      expect(screen.getByRole('navigation', { name: 'Public navigation' })).toBeVisible();
-      expect(screen.queryByRole('navigation', { name: 'Member navigation' })).not.toBeInTheDocument();
-    } else {
-      expect(screen.getByRole('link', { name: 'Users', exact: true })).toHaveAttribute('href', '/users');
-    }
+    await waitFor(() => expect(screen.getByLabelText('Current route').textContent).toBe(path));
+    expect(screen.getByRole('navigation', { name: 'Member navigation' })).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Users', exact: true })).toHaveAttribute('href', '/users');
+    if (path === '/admin') expect(screen.getByRole('heading', { name: 'Admin Dashboard' })).toBeVisible();
+    if (path === '/users') expect(screen.getByRole('heading', { name: 'Manage Users' })).toBeVisible();
   });
   it.each(['/login', '/register'])('redirects signed-in users from %s to blogs', async (path) => {
     signIn();
@@ -87,11 +84,11 @@ describe('direct URL role matrix', () => {
     expect(await screen.findByRole('heading', { name: 'All Blogs' })).toBeVisible();
     expect(screen.getByLabelText('Current route')).toHaveTextContent('/blogs');
   });
-  it.each(['/login', '/register'])('redirects signed-in admin from %s to the public admin fallback', async (path) => {
+  it.each(['/login', '/register'])('redirects signed-in admin from %s to the finished dashboard', async (path) => {
     signIn('admin');
     open(path);
-    await waitFor(() => expect(screen.getByLabelText('Current route').textContent).toBe('/'));
-    expect(screen.getByRole('link', { name: 'Go to Dashboard' })).toHaveAttribute('href', '/admin');
+    await waitFor(() => expect(screen.getByLabelText('Current route').textContent).toBe('/admin'));
+    expect(screen.getByRole('heading', { name: 'Admin Dashboard' })).toBeVisible();
   });
   it.each(['{bad', '[]', JSON.stringify({ userId: 'writer', role: 'admin' })])('rejects malformed sessions %s', async (session) => {
     saveUsers([writer]);

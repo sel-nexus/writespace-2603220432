@@ -1,4 +1,4 @@
-/** Route public, identity, reading and content surfaces; revalidate local data without Context. */
+/** Route public, member and Admin surfaces; revalidate browser-local data without Context. */
 import { useEffect, useState } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import LandingPage from './pages/LandingPage';
@@ -7,6 +7,8 @@ import RegisterPage from './pages/RegisterPage';
 import Home from './pages/Home';
 import ReadBlog from './pages/ReadBlog';
 import WriteBlog from './pages/WriteBlog';
+import AdminDashboard from './pages/AdminDashboard';
+import UserManagement from './pages/UserManagement';
 import { Navbar } from './components/Navbar';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { getSession } from './utils/auth';
@@ -14,7 +16,7 @@ import { getPosts, getUsers } from './utils/storage';
 
 /**
  * Keep canonical identity and reading data fresh after navigation and storage events.
- * @returns {JSX.Element} Reading routes and guarded redirects for future stories.
+ * @returns {JSX.Element} Finished routes with canonical identity and role guards.
  */
 export default function App() {
   const location = useLocation();
@@ -47,9 +49,9 @@ export default function App() {
   }
 
   /** Wrap a reading page with canonical guards and member navigation. */
-  function member(page) {
+  function member(page, role) {
     return (
-      <ProtectedRoute>
+      <ProtectedRoute role={role}>
         <div className="min-h-screen bg-slate-50">
           {current && (
             <Navbar key={location.pathname} session={current} />
@@ -90,17 +92,14 @@ export default function App() {
           ) : null)}
         />
       ))}
-      {['/admin', '/users'].map((path) => (
-        <Route
-          key={path}
-          path={path}
-          element={
-            <ProtectedRoute role="admin">
-              <Navigate to="/" replace />
-            </ProtectedRoute>
-          }
-        />
-      ))}
+      <Route
+        path="/admin"
+        element={member(<AdminDashboard onPostsChanged={postsChanged} />, 'admin')}
+      />
+      <Route
+        path="/users"
+        element={member(<UserManagement onAccountsChanged={() => setUsers(getUsers())} />, 'admin')}
+      />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
