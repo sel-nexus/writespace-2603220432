@@ -25,7 +25,8 @@ test('guest discovery, validation, registration and reload preserve the exact lo
   expect(await page.evaluate(() => localStorage.getItem('writespace_users'))).toBeNull();
   await page.getByLabel('Confirm Password', { exact: true }).fill('demo-only');
   await page.getByRole('button', { name: 'Register', exact: true }).click();
-  await expect(page.getByRole('link', { name: 'Go to Dashboard' })).toHaveAttribute('href', '/blogs');
+  await expect(page).toHaveURL(/\/blogs$/);
+  await expect(page.getByRole('heading', { name: 'All Blogs', exact: true })).toBeVisible();
   const state = await page.evaluate(() => ({
     users: JSON.parse(localStorage.getItem('writespace_users')),
     session: JSON.parse(localStorage.getItem('writespace_session')),
@@ -37,9 +38,10 @@ test('guest discovery, validation, registration and reload preserve the exact lo
   await page.reload();
   await expect(page.getByText('Jane Doe', { exact: true })).toBeVisible();
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('writespace_users')))).toEqual(state.users);
+  await page.getByRole('navigation', { name: 'Member navigation' }).getByRole('link', { name: 'WriteSpace', exact: true }).click();
   await page.getByRole('navigation', { name: 'Footer navigation' }).getByRole('link', { name: 'Login', exact: true }).click();
-  await expect(page.getByRole('link', { name: 'Go to Dashboard' })).toBeVisible();
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByRole('heading', { name: 'All Blogs', exact: true })).toBeVisible();
+  await expect(page).toHaveURL(/\/blogs$/);
   await page.screenshot({ path: testInfo.outputPath('identity-persisted.png'), fullPage: true });
   const tree = await page.accessibility.snapshot();
   expect(tree).not.toBeNull();

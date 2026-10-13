@@ -1,31 +1,58 @@
-/** Route the identity slice and revalidate local sessions on navigation and storage events. */
+/** Route public, identity and reading surfaces; revalidate local data without Context. */
 import { useEffect, useState } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import Home from './pages/Home';
+import ReadBlog from './pages/ReadBlog';
+import { Navbar } from './components/Navbar';
+import { ProtectedRoute } from './components/ProtectedRoute';
 import { getSession } from './utils/auth';
+import { getPosts, getUsers } from './utils/storage';
 
 /**
- * Keep public/auth routes consistent without creating future-story page stubs.
- * @returns {JSX.Element} Identity routes and temporary destination redirects.
+ * Keep canonical identity and reading data fresh after navigation and storage events.
+ * @returns {JSX.Element} Reading routes and guarded redirects for future stories.
  */
 export default function App() {
   const location = useLocation();
   const [session, setSession] = useState(getSession);
+  const [posts, setPosts] = useState(getPosts);
+  const [users, setUsers] = useState(getUsers);
   useEffect(() => {
-    /** Refresh canonical identity after navigation or cross-tab changes. */
-    function refresh() { setSession(getSession()); }
+    /** Refresh identity and collections after navigation or cross-tab changes. */
+    function refresh() {
+      setSession(getSession());
+      setPosts(getPosts());
+      setUsers(getUsers());
+    }
     refresh();
     window.addEventListener('storage', refresh);
     return () => window.removeEventListener('storage', refresh);
-  }, [location.pathname]);
+  }, [location.pathname, location.key]);
 
-  // Recheck synchronously for guards so a stale state never admits an auth route.
+  // Guards recheck synchronously rather than trusting cached identity.
   const current = getSession();
   const home = current?.role === 'admin' ? '/admin' : '/blogs';
-  /** Refresh state after a successful same-tab identity write. */
-  function authenticated() { setSession(getSession()); }
+  /** Refresh state after a successful same-tab identity write or removal. */
+  function authenticated() {
+    setSession(getSession());
+  }
+
+  /** Wrap a reading page with canonical guards and member navigation. */
+  function member(page) {
+    return (
+      <ProtectedRoute>
+        <div className="min-h-screen bg-slate-50">
+          {current && (
+            <Navbar key={location.pathname} session={current} />
+          )}
+          {page}
+        </div>
+      </ProtectedRoute>
+    );
+  }
 
   return (
     <Routes>
@@ -38,9 +65,36 @@ export default function App() {
         path="/register"
         element={current ? <Navigate to={home} replace /> : <RegisterPage onAuthenticated={authenticated} />}
       />
-      <Route path="/blogs" element={<Navigate to={current ? '/' : '/login'} replace />} />
-      <Route path="/admin" element={<Navigate to={current ? '/' : '/login'} replace />} />
-      <Route path="/blog/:id" element={<Navigate to={current ? '/' : '/login'} replace />} />
+      <Route
+        path="/blogs"
+        element={member(current ? <Home posts={posts} users={users} session={current} /> : null)}
+      />
+      <Route
+        path="/blog/:id"
+        element={member(current ? <ReadBlog posts={posts} users={users} session={current} /> : null)}
+      />
+      {['/write', '/edit/:id'].map((path) => (
+        <Route
+          key={path}
+          path={path}
+          element={
+            <ProtectedRoute>
+              <Navigate to="/blogs" replace />
+            </ProtectedRoute>
+          }
+        />
+      ))}
+      {['/admin', '/users'].map((path) => (
+        <Route
+          key={path}
+          path={path}
+          element={
+            <ProtectedRoute role="admin">
+              <Navigate to="/" replace />
+            </ProtectedRoute>
+          }
+        />
+      ))}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
