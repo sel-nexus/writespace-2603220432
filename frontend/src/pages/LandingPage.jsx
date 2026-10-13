@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { PublicNavbar } from '../components/PublicNavbar';
 import { getPosts } from '../utils/storage';
+import { formatDate } from '../utils/presentation';
 
 const displayFont = "font-['Libre_Baskerville',serif]";
 const focus = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2';
@@ -21,15 +22,6 @@ function latestPosts() {
     typeof post.title === 'string' && typeof post.content === 'string' &&
     typeof post.createdAt === 'string' && Number.isFinite(Date.parse(post.createdAt)))
     .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)).slice(0, 3);
-}
-
-/**
- * Format a validated post date consistently with the future reading surface.
- * @param {string} date ISO creation date.
- * @returns {string} English month, two-digit day and year.
- */
-function formatDate(date) {
-  return new Date(date).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
 }
 
 /**

@@ -12,6 +12,7 @@ import { formatDate } from '../utils/presentation';
 export function UserRow({ account, session, onDelete, mobile = false }) {
   const reason = accountDeletionReason(account, session);
   const date = account.id === 'admin' ? 'Built-in' : formatDate(account.createdAt);
+  const reasonId = `deletion-reason-${mobile ? 'mobile' : 'desktop'}-${encodeURIComponent(account.id)}`;
   const badge = account.role === 'admin'
     ? 'bg-violet-100 text-violet-700 ring-violet-300'
     : 'bg-indigo-100 text-indigo-700 ring-indigo-300';
@@ -35,6 +36,7 @@ export function UserRow({ account, session, onDelete, mobile = false }) {
         aria-label={`Delete ${account.username}`}
         title={reason || undefined}
         disabled={Boolean(reason)}
+        aria-describedby={reason ? reasonId : undefined}
         onClick={() => onDelete(account)}
         className={'rounded-lg border border-red-200 bg-red-50 px-4 py-2 font-medium text-red-600 ' +
           'hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 ' +
@@ -42,6 +44,11 @@ export function UserRow({ account, session, onDelete, mobile = false }) {
       >
         Delete
       </button>
+      {reason && (
+        <span id={reasonId} className="mt-2 block max-w-48 text-left text-xs text-slate-600">
+          {reason}
+        </span>
+      )}
     </span>
   );
   if (mobile) {

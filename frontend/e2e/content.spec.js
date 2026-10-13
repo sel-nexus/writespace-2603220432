@@ -59,8 +59,11 @@ for (const name of ['writer', 'admin', 'editor']) {
     await page.getByLabel('Username', { exact: true }).fill(name);
     await page.getByLabel('Password', { exact: true }).fill(name === 'admin' ? 'admin' : 'demo');
     await page.getByRole('button', { name: 'Login', exact: true }).click();
-    // Until Story4, admin login intentionally reaches the public safe fallback.
-    if (name !== 'writer') await page.getByRole('link', { name: 'Start Reading', exact: true }).click();
+    if (name !== 'writer') {
+      await expect(page).toHaveURL(/\/admin$/);
+      await expect(page.getByRole('heading', { name: 'Admin Dashboard', exact: true })).toBeVisible();
+      await followNav(page, 'All Blogs');
+    }
     await expect(page).toHaveURL(/\/blogs$/);
     await followNav(page, 'Write');
     await expect(page.getByRole('heading', { name: 'Write a Blog' })).toBeVisible();
@@ -177,31 +180,63 @@ test('missing direct editor never creates a replacement and offers back navigati
   expect(await stored(page)).toEqual([original]);
 });
 
-test('post write denial keeps the editor and reader intact with feedback', async ({ page }) => {
+test('quota-full post save keeps editor and reader intact, then succeeds after freeing space', async ({ page }) => {
   await seed(page, 'writer');
-  await page.addInitScript(() => {
-    const save = Storage.prototype.setItem;
-    Storage.prototype.setItem = function (key, value) {
-      if (key === 'writespace_posts' && localStorage.getItem('content-deny-writes') === 'true') {
-        throw new DOMException('Quota', 'QuotaExceededError');
-      }
-      return save.call(this, key, value);
-    };
-  });
   await page.goto('/blog/post');
-  await page.evaluate(() => localStorage.setItem('content-deny-writes', 'true'));
+  const identityBefore = await page.evaluate(() => ({
+    users: localStorage.getItem('writespace_users'), session: localStorage.getItem('writespace_session'),
+  }));
+  await page.evaluate(() => {
+    const key = 'content-quota';
+    let value = '';
+    localStorage.setItem(key, value);
+    for (let size = 65536; size >= 1; size = Math.floor(size / 2)) {
+      while (true) {
+        const next = value + 'x'.repeat(size);
+        try {
+          localStorage.setItem(key, next);
+          value = next;
+        } catch (error) {
+          if (error.name !== 'QuotaExceededError') throw error;
+          break;
+        }
+      }
+    }
+  });
   await page.getByRole('link', { name: 'Edit', exact: true }).click();
-  await fill(page, 'Not saved', 'Not saved content');
+  // The update must grow the stored collection; quota does not prevent smaller replacements.
+  const title = 'Not saved while storage is full';
+  const content = 'Not saved content. '.repeat(100);
+  await fill(page, title, content);
   await page.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByRole('alert')).toHaveText('Unable to save data in this browser. Please try again.');
   await expect(page).toHaveURL(/\/edit\/post$/);
+  await expect(page.getByLabel('Title')).toHaveValue(title);
+  await expect(page.getByLabel('Content')).toHaveValue(content);
   expect(await stored(page)).toEqual([original]);
+  expect(await page.evaluate(() => ({
+    users: localStorage.getItem('writespace_users'), session: localStorage.getItem('writespace_session'),
+  }))).toEqual(identityBefore);
   await page.getByRole('button', { name: 'Cancel' }).click();
+  await expect(page).toHaveURL(/\/blog\/post$/);
+  await expect(page.getByRole('heading', { name: original.title, exact: true })).toBeVisible();
+  expect(await page.getByRole('article').locator('p').evaluate((element) => element.textContent)).toBe(original.content);
+  expect(await stored(page)).toEqual([original]);
+  await page.getByRole('link', { name: 'Edit', exact: true }).click();
+  await fill(page, title, content);
+  await page.evaluate(() => localStorage.removeItem('content-quota'));
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page).toHaveURL(/\/blog\/post$/);
+  await expect(page.getByRole('heading', { name: title, exact: true })).toBeVisible();
+  expect(await stored(page)).toEqual([{ ...original, title, content }]);
+  // Synthetic delete-write denial belongs in Reading.test.jsx; shrinking a collection can succeed at quota.
   page.once('dialog', (dialog) => dialog.accept());
   await page.getByRole('button', { name: 'Delete' }).click();
-  await expect(page.getByRole('alert')).toHaveText('Unable to save data in this browser. Please try again.');
-  await expect(page).toHaveURL(/\/blog\/post$/);
-  expect(await stored(page)).toEqual([original]);
+  await expect(page).toHaveURL(/\/blogs$/);
+  expect(await stored(page)).toEqual([]);
+  expect(await page.evaluate(() => ({
+    users: localStorage.getItem('writespace_users'), session: localStorage.getItem('writespace_session'),
+  }))).toEqual(identityBefore);
 });
 
 test('same-tab ownership drift rejects save and confirmed delete using current storage', async ({ page }) => {

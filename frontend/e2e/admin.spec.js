@@ -153,7 +153,25 @@ test('Admin login, overview, both-role creation, recent controls and preserved d
   await expect(page).toHaveURL(/\/admin$/);
 });
 
-test('stored Admin self protection, writer role guards and deleted-session reload use canonical accounts', async ({ page }, testInfo) => {
+for (const route of ['/admin', '/users', '/edit/6']) {
+  test(`writer direct entry ${route} rejects access without changing accounts or posts`, async ({ page }) => {
+    await page.addInitScript(({ accounts, entries, identity }) => {
+      localStorage.setItem('writespace_users', JSON.stringify(accounts));
+      localStorage.setItem('writespace_posts', JSON.stringify(entries));
+      localStorage.setItem('writespace_session', JSON.stringify(identity));
+    }, {
+      accounts: [writer, editor], entries: posts,
+      identity: { userId: writer.id, username: writer.username, displayName: writer.displayName, role: writer.role },
+    });
+    await page.goto(route);
+    await expect(page).toHaveURL(/\/blogs$/);
+    await expect(page.getByRole('heading', { name: 'All Blogs' })).toBeVisible();
+    expect(await stored(page, 'writespace_posts')).toEqual(posts);
+    expect(await stored(page, 'writespace_users')).toEqual([writer, editor]);
+  });
+}
+
+test('stored Admin self protection and deleted-session reload use canonical accounts', async ({ page }, testInfo) => {
   await seed(page);
   await page.goto('/login');
   await login(page, 'editor', 'dummy');
@@ -167,14 +185,8 @@ test('stored Admin self protection, writer role guards and deleted-session reloa
   await login(page, 'writer', 'dummy');
   await expect(page).toHaveURL(/\/blogs$/);
   await expect(page.getByRole('link', { name: 'Users', exact: true })).toHaveCount(0);
-  // Direct URL guard cells intentionally use full navigation; the main journey above uses UI links.
-  for (const route of ['/admin', '/users', '/edit/6']) {
-    await page.goto(route);
-    await expect(page).toHaveURL(/\/blogs$/);
-    await expect(page.getByRole('heading', { name: 'All Blogs' })).toBeVisible();
-    expect(await stored(page, 'writespace_posts')).toEqual(posts);
-    expect(await stored(page, 'writespace_users')).toEqual([writer, editor]);
-  }
+  expect(await stored(page, 'writespace_posts')).toEqual(posts);
+  expect(await stored(page, 'writespace_users')).toEqual([writer, editor]);
   // Simulate another tab deleting this identity; reload must not trust the remaining session record.
   await page.evaluate(() => {
     const current = JSON.parse(localStorage.getItem('writespace_users'));

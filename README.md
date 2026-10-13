@@ -67,7 +67,7 @@ npm run preview
 
 The production build writes `frontend/dist/`. Preview normally serves at port 4173. Test direct routes and reloads on the actual deployment as well as in-app navigation; a local passing build is not evidence of a live Vercel deployment.
 
-Story4 worker verification: the permitted Vitest command above passed **99 tests** (57 service, 42 UI). E2E specs were authored but not executed by that worker. Whole-app tests, production build, browser/visual review and release evidence belong to the parent release verification; no passing result for those is claimed here.
+Developer verification: the complete unit/component suite passed **411 tests**. Ten focused title regressions were subsequently added; the affected Reading/Admin suites passed **116 tests** (74 + 42), bringing the current suite inventory to 421 tests. The production build passed after the final application changes. Playwright's desktop/mobile run passed 104 of 106 tests; the two preview-link selector failures were corrected without changing application behavior, and the affected identity spec then passed all 14 tests. Thus every browser case passed across the full run and targeted rerun; no later single full-suite pass is claimed. Accessibility, computed-style, rendered HTML and screenshot captures passed on both viewports. The closing independent test critic passed with score 1.00 and zero high failures. See the separately published test report for commands and limitations.
 
 ## Static deployment
 
@@ -96,6 +96,6 @@ Open `http://localhost:8080`. The existing multistage Dockerfile builds with Nod
 
 ## Dependencies and scope caveat
 
-Pinned dependency versions and the committed lockfile make installation reproducible, not vulnerability-free. The PRD mandates the Vite 5 / Tailwind 3 baseline; older build/test dependencies can have security advisories. Review `npm audit` and upstream advisories before public deployment, especially development-server exposure, and make separately reviewed compatible updates. Do not treat this README or successful tests as a clean audit; no audit was executed by the Story4 worker.
+Pinned dependency versions and the committed lockfile make installation reproducible, not vulnerability-free. The PRD mandates the Vite 5 / Tailwind 3 baseline; older build/test dependencies can have security advisories. Developer's install audit reported 17 advisories (6 moderate, 9 high, 2 critical). React Router was patched within v6 to 6.30.6; remaining advisories require review before public deployment, especially development-server exposure and older test tooling. Do not expose a development server publicly or treat successful tests as a clean security audit. Review `npm audit` and make separately reviewed compatible updates.
 
 This MVP retains one epic and four stories. It does not include rich text, images, comments, tags, recovery flows, account updates, OAuth, password hashing or cloud persistence.

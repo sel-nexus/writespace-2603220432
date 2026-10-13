@@ -101,6 +101,27 @@ describe('public discovery', () => {
     expect(screen.getByLabelText('Current route')).toHaveTextContent('/login');
   });
 
+  it('keeps a near-midnight UTC creation date consistent from public preview to full reader', async () => {
+    const user = userEvent.setup();
+    const post = {
+      id: 'midnight', title: 'A midnight thought', content: 'Words across a calendar boundary.',
+      createdAt: '2026-03-04T00:30:00.000Z', authorId: 'admin', authorName: 'Admin',
+    };
+    savePosts([post]);
+    login('admin', 'admin');
+    const session = getSession();
+    renderApp();
+    const preview = screen.getByRole('link', { name: /A midnight thought/ });
+    const previewDate = within(preview).getByText('Mar 04, 2026').textContent;
+    await user.click(preview);
+    expect(screen.getByLabelText('Current route').textContent).toBe('/blog/midnight');
+    expect(screen.getByRole('heading', { name: post.title, level: 1 })).toBeInTheDocument();
+    expect(screen.getByText('Mar 04, 2026')).toHaveTextContent(previewDate);
+    expect(screen.getByText(post.content)).toBeInTheDocument();
+    expect(JSON.parse(localStorage.getItem('writespace_posts'))).toEqual([post]);
+    expect(getSession()).toEqual(session);
+  });
+
   it.each(['{broken', '{}'])('degrades corrupt post storage %s into the empty state', (raw) => {
     localStorage.setItem('writespace_posts', raw);
     renderApp();
@@ -117,18 +138,37 @@ describe('public discovery', () => {
   });
 
   it.each(['admin', 'user'])('shows the correct signed-in %s dashboard link and redirects auth visits', async (role) => {
+    const user = userEvent.setup();
     if (role === 'admin') login('admin', 'admin');
     else register({ displayName: 'Writer', username: 'writer', password: 'demo', confirmPassword: 'demo' });
+    const session = getSession();
+    const storedUsers = getUsers();
+    const home = role === 'admin' ? '/admin' : '/blogs';
+    const heading = role === 'admin' ? 'Admin Dashboard' : 'All Blogs';
+    expect(session.role).toBe(role);
     renderApp('/login');
-    const dashboard = await screen.findByRole('link', { name: 'Go to Dashboard' });
-    expect(dashboard).toHaveAttribute('href', role === 'admin' ? '/admin' : '/blogs');
+    expect(await screen.findByRole('heading', { name: heading })).toBeInTheDocument();
+    expect(screen.getByLabelText('Current route').textContent).toBe(home);
+    await user.click(within(screen.getByRole('navigation', { name: 'Member navigation' }))
+      .getByRole('link', { name: 'WriteSpace' }));
+    expect(screen.getByLabelText('Current route').textContent).toBe('/');
+    expect(screen.getByRole('link', { name: 'Go to Dashboard' })).toHaveAttribute('href', home);
     expect(screen.getByText(role === 'admin' ? 'Admin' : 'Writer')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Start Reading' })).toHaveAttribute('href', '/blogs');
-    expect(screen.getByLabelText('Current route')).toHaveTextContent(/^\/$/);
-    await userEvent.setup().click(within(screen.getByRole('navigation', { name: 'Footer navigation' }))
-      .getByRole('link', { name: 'Register' }));
-    expect(screen.getByLabelText('Current route')).toHaveTextContent(/^\/$/);
-    expect(screen.queryByRole('heading', { name: 'Begin your story.' })).not.toBeInTheDocument();
+    for (const authLink of ['Register', 'Login']) {
+      await user.click(within(screen.getByRole('navigation', { name: 'Footer navigation' }))
+        .getByRole('link', { name: authLink }));
+      expect(await screen.findByRole('heading', { name: heading })).toBeInTheDocument();
+      expect(screen.getByLabelText('Current route').textContent).toBe(home);
+      expect(screen.queryByRole('heading', { name: 'Begin your story.' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('heading', { name: 'Welcome back.' })).not.toBeInTheDocument();
+      expect(getSession()).toEqual(session);
+      expect(JSON.parse(localStorage.getItem('writespace_session'))).toEqual(session);
+      expect(getUsers()).toEqual(storedUsers);
+      await user.click(within(screen.getByRole('navigation', { name: 'Member navigation' }))
+        .getByRole('link', { name: 'WriteSpace' }));
+      expect(screen.getByLabelText('Current route').textContent).toBe('/');
+    }
   });
 
   it('removes a deleted identity from public navigation after storage revalidation', async () => {

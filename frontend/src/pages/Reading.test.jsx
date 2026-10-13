@@ -2,7 +2,7 @@
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { MemoryRouter, useLocation } from 'react-router-dom';
+import { Link, MemoryRouter, useLocation } from 'react-router-dom';
 import App from '../App';
 import { Avatar, getAvatar } from '../components/Avatar';
 import { ProtectedRoute } from '../components/ProtectedRoute';
@@ -50,8 +50,106 @@ function open(path = '/blogs') {
   );
 }
 
+describe('application document titles', () => {
+  it.each([
+    ['guest', [
+      ['/', 'WriteSpace'],
+      ['/login', 'Login | WriteSpace'],
+      ['/register', 'Register | WriteSpace'],
+      ['/', 'WriteSpace'],
+    ]],
+    ['admin', [
+      ['/blogs', 'All Blogs | WriteSpace'],
+      ['/write', 'Write a Blog | WriteSpace'],
+      ['/admin', 'Admin Dashboard | WriteSpace'],
+      ['/users', 'Manage Users | WriteSpace'],
+      ['/', 'WriteSpace'],
+    ]],
+  ])('updates exact static titles through %s navigation', async (identity, destinations) => {
+    if (identity === 'admin') signIn('admin');
+    render(
+      <MemoryRouter initialEntries={['/']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <App />
+        <RouteLocation />
+        <nav aria-label="Title test routes">
+          {destinations.map(([path], index) => (
+            <Link key={index} to={path}>Title route {index}</Link>
+          ))}
+        </nav>
+      </MemoryRouter>,
+    );
+    expect(document.title).toBe('WriteSpace');
+    for (const [index, [path, title]] of destinations.entries()) {
+      await userEvent.click(screen.getByRole('link', { name: `Title route ${index}`, exact: true }));
+      await waitFor(() => {
+        expect(screen.getByLabelText('Current route').textContent).toBe(path);
+        expect(document.title).toBe(title);
+      });
+    }
+  });
+
+  it.each([
+    ['/blog/own', 'Own thoughts | WriteSpace'],
+    ['/edit/own', 'Edit: Own thoughts | WriteSpace'],
+    ['/blog/missing', 'Post not found | WriteSpace'],
+    ['/edit/missing', 'Post not found | WriteSpace'],
+  ])('sets the exact resource title at %s', async (path, title) => {
+    signIn();
+    savePosts([own]);
+    open(path);
+    await waitFor(() => expect(document.title).toBe(title));
+    expect(screen.getByLabelText('Current route').textContent).toBe(path);
+  });
+
+  it.each([
+    ['blog', 'Encoded thoughts | WriteSpace'],
+    ['edit', 'Edit: Encoded thoughts | WriteSpace'],
+  ])('resolves an encoded string post id for the %s title', async (resource, title) => {
+    signIn();
+    const post = { ...own, id: 'entry / café?#%', title: 'Encoded thoughts' };
+    savePosts([post]);
+    const path = `/${resource}/${encodeURIComponent(post.id)}`;
+    open(path);
+    await waitFor(() => expect(document.title).toBe(title));
+    expect(screen.getByLabelText('Current route').textContent).toBe(path);
+  });
+
+  it.each([
+    ['blog', 'Own thoughts | WriteSpace', 'Renamed thoughts | WriteSpace'],
+    ['edit', 'Edit: Own thoughts | WriteSpace', 'Edit: Renamed thoughts | WriteSpace'],
+  ])('refreshes the %s resource title after cross-tab storage changes', async (resource, initialTitle, refreshedTitle) => {
+    signIn();
+    savePosts([own]);
+    const path = `/${resource}/own`;
+    open(path);
+    await waitFor(() => expect(document.title).toBe(initialTitle));
+    act(() => {
+      savePosts([{ ...own, title: 'Renamed thoughts' }]);
+      window.dispatchEvent(new Event('storage'));
+    });
+    await waitFor(() => expect(document.title).toBe(refreshedTitle));
+    expect(screen.getByLabelText('Current route').textContent).toBe(path);
+  });
+});
+
 const protectedPaths = ['/blogs', '/blog/own', '/write', '/edit/own', '/admin', '/users'];
 describe('direct URL role matrix', () => {
+  it.each([undefined, 'admin'])('redirects guest null children with role %s without console errors', async (role) => {
+    const consoleError = vi.spyOn(console, 'error');
+    try {
+      render(
+        <MemoryRouter initialEntries={['/write']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <ProtectedRoute role={role}>{null}</ProtectedRoute>
+          <RouteLocation />
+        </MemoryRouter>,
+      );
+      await waitFor(() => expect(screen.getByLabelText('Current route').textContent).toBe('/login'));
+      expect(getSession()).toBeNull();
+      expect(consoleError).not.toHaveBeenCalled();
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
   it.each(protectedPaths)('redirects guest %s to navbar-free login', async (path) => {
     open(path);
     expect(await screen.findByRole('button', { name: 'Login', exact: true })).toBeVisible();

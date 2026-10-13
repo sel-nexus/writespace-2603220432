@@ -158,21 +158,36 @@ test('missing reader offers back navigation to an empty collection', async ({ pa
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('writespace_posts')))).toEqual([]);
 });
 
-test('logout denial remains an inline error without clearing session or records', async ({ page }) => {
+test('quota-full logout removes only the session and preserves accounts and posts', async ({ page }) => {
   await seed(page, 'user');
-  await page.addInitScript(() => {
-    const original = Storage.prototype.removeItem;
-    Storage.prototype.removeItem = function (key) {
-      if (key === 'writespace_session') throw new DOMException('Denied', 'SecurityError');
-      return original.call(this, key);
-    };
-  });
   await page.goto('/blogs');
+  // Quota blocks growing writes, not removeItem. Synthetic removal denial and retry
+  // remain in the existing Reading.test.jsx component test, never mocked in E2E.
+  await page.evaluate(() => {
+    const key = 'reading-quota';
+    let value = '';
+    localStorage.setItem(key, value);
+    for (let size = 65536; size >= 1; size = Math.floor(size / 2)) {
+      while (true) {
+        const next = value + 'x'.repeat(size);
+        try {
+          localStorage.setItem(key, next);
+          value = next;
+        } catch (error) {
+          if (error.name !== 'QuotaExceededError') throw error;
+          break;
+        }
+      }
+    }
+  });
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('writespace_session')).userId)).toBe('writer');
   await page.getByRole('button', { name: 'Account for Writer' }).click();
   await page.getByRole('button', { name: 'Logout' }).click();
-  await expect(page.getByRole('alert')).toHaveText('Unable to clear your session in this browser. Please try again.');
-  await expect(page).toHaveURL(/\/blogs$/);
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('writespace_session')).userId)).toBe('writer');
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByRole('navigation', { name: 'Public navigation' }).getByRole('link', { name: 'Login' })).toBeVisible();
+  expect(await page.evaluate(() => localStorage.getItem('writespace_session'))).toBeNull();
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('writespace_posts')))).toEqual(posts);
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('writespace_users')))).toEqual(users);
+  expect(await page.evaluate(() => localStorage.getItem('reading-quota').length)).toBeGreaterThan(0);
+  await page.evaluate(() => localStorage.removeItem('reading-quota'));
 });

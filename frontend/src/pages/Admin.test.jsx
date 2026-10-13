@@ -112,15 +112,36 @@ describe('responsive accounts and creation', () => {
     expect(within(row('writer')).getByText('Mar 01, 2026')).toBeVisible();
     expect(within(row('editor')).getByText('Admin')).toHaveClass('bg-violet-100');
     expect(within(row('writer')).getByText('user')).toHaveClass('bg-indigo-100');
-    for (const layout of [table, screen.getByLabelText('Mobile accounts')]) {
+    const reasonIds = [];
+    for (const [layoutName, layout] of [
+      ['desktop', table],
+      ['mobile', screen.getByLabelText('Mobile accounts')],
+    ]) {
       const builtin = within(layout).getByRole('button', { name: 'Delete admin' });
       const self = within(layout).getByRole('button', { name: 'Delete editor' });
       expect(builtin).toBeDisabled();
       expect(builtin).toHaveAttribute('title', 'Default admin cannot be deleted.');
       expect(self).toBeDisabled();
       expect(self).toHaveAttribute('title', 'You cannot delete your own account.');
-      expect(within(layout).getByRole('button', { name: 'Delete writer' })).toBeEnabled();
+      for (const [button, accountId, reason] of [
+        [builtin, 'admin', 'Default admin cannot be deleted.'],
+        [self, 'editor', 'You cannot delete your own account.'],
+      ]) {
+        const reasonId = `deletion-reason-${layoutName}-${accountId}`;
+        expect(button).toHaveAttribute('aria-describedby', reasonId);
+        expect(button).toHaveAccessibleDescription(reason);
+        const target = document.getElementById(reasonId);
+        expect(target).toBeVisible();
+        expect(target.textContent).toBe(reason);
+        expect(within(layout).getByText(reason, { exact: true })).toBe(target);
+        reasonIds.push(reasonId);
+      }
+      const enabled = within(layout).getByRole('button', { name: 'Delete writer' });
+      expect(enabled).toBeEnabled();
+      expect(enabled).not.toHaveAttribute('aria-describedby');
+      expect(enabled).toHaveAccessibleDescription('');
     }
+    expect(new Set(reasonIds).size).toBe(4);
     const mobile = screen.getByLabelText('Mobile accounts');
     expect(mobile).toHaveClass('md:hidden');
     expect(within(mobile).getAllByRole('article')).toHaveLength(3);

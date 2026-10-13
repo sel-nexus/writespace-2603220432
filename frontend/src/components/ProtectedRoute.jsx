@@ -5,8 +5,10 @@ import { getSession } from '../utils/auth';
 
 /**
  * Recheck canonical storage identity before rendering any protected content.
- * @param {object} props Children and optional required admin role.
- * @returns {JSX.Element} Protected content or a safe redirect.
+ * @param {object} props Optional children and required admin role, if any.
+ * @param {React.ReactNode} [props.children] Protected content; null is valid for guests.
+ * @param {'admin'} [props.role] Restrict access to a canonical admin session.
+ * @returns {React.ReactNode} Protected content, including null, or a safe redirect.
  */
 export function ProtectedRoute({ children, role }) {
   const session = getSession();
@@ -15,6 +17,6 @@ export function ProtectedRoute({ children, role }) {
   return children;
 }
 ProtectedRoute.propTypes = {
-  children: PropTypes.node.isRequired,
+  children: PropTypes.node,
   role: PropTypes.oneOf(['admin']),
 };

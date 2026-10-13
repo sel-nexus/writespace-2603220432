@@ -35,6 +35,18 @@ export default function App() {
     return () => window.removeEventListener('storage', refresh);
   }, [location.pathname, location.key]);
 
+  useEffect(() => {
+    const labels = {
+      '/': 'WriteSpace', '/login': 'Login', '/register': 'Register',
+      '/blogs': 'All Blogs', '/write': 'Write a Blog', '/admin': 'Admin Dashboard', '/users': 'Manage Users',
+    };
+    const resource = /^\/(blog|edit)\/(.+)$/.exec(location.pathname);
+    const post = resource && posts.find((record) => typeof record?.id === 'string' && encodeURIComponent(record.id) === resource[2]);
+    const label = resource ? (post ? `${resource[1] === 'edit' ? 'Edit: ' : ''}${post.title}` : 'Post not found')
+      : labels[location.pathname] || 'WriteSpace';
+    document.title = label === 'WriteSpace' ? label : `${label} | WriteSpace`;
+  }, [location.pathname, posts]);
+
   // Guards recheck synchronously rather than trusting cached identity.
   const current = getSession();
   const home = current?.role === 'admin' ? '/admin' : '/blogs';
